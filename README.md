@@ -1,3 +1,9 @@
+### Before following this README instructions, make sure the HPC cluster is set up with the right software
+
+For compiler: source /usr/usc/gnu/gcc/4.9.3/setup.sh
+For CUDA: source /usr/usc/cuda/10.0/setup.sh
+
+
 # A State-of-the-Art Large-scale Pretrained Response Generation Model (DialoGPT)
 
 This repository contains the source code and trained model for a large-scale pretrained dialogue response generation model. The [human evaluation results](#human_eval) indicate that the response generated from DialoGPT is comparable to human response quality under a single-turn conversation Turing test.
