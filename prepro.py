@@ -148,7 +148,7 @@ def main(args):
 
     attrs = []
     if args.reverse:
-        attrs.append('reverse')
+        attrs.append('reverse') 
     if args.two_turn:
         attrs.append('2turn')
     if attrs:

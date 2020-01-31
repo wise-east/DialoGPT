@@ -266,12 +266,19 @@ if args.local_rank == -1 or get_rank() == 0:
     else:
         pbar = None
 
-while True:
+logger.info("Start training!")
+
+
+
+while epoch < 5:
+    logger.info(f"Epoch {epoch}")
     model.train()
     (tr_loss, tr_ppl, mean_ppl, nb_tr_examples, nb_tr_steps) = 0.0, 0.0, 0.0, 0, 0
     n_token_real, n_token_total = 0, 0
     train_start_time_epoch = time.time()
+
     for batch in train_dataloader:
+        logger.info("Inside training batch")
         # activate new training mode
         seq_len = batch[0].shape[1]
         batch = tuple(t.to(device) for t in batch)
@@ -279,6 +286,7 @@ while True:
         if args.no_token_id:
             token_ids = None
         loss, ppl = model(input_ids, position_ids, token_ids, label_ids)
+
 
         if n_gpu > 1:
             loss = loss.mean()
@@ -298,6 +306,7 @@ while True:
         else:
             tr_ppl += mean_ppl
         mean_ppl = tr_ppl / nb_tr_steps
+        logger.info(f"mean_loss: {mean_loss}\tmean_ppl: {mean_ppl}")
 
         n_token_total += input_ids.shape[0] * input_ids.shape[1]
         n_token_real += (input_ids != 0).sum().item()
@@ -384,3 +393,6 @@ if args.local_rank == -1 or get_rank() == 0:
         pbar.close()
     train_logger.close()
     eval_logger.close()
+
+
+logger.info("Finished training!")

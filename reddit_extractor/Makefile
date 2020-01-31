@@ -16,10 +16,10 @@ test: $T/test.tsv.gz
 ../data/test.refs.txt: $T/test.tsv.gz
 	python src/create-multiref.py --data $< --testids data/test-multi-refs-ids.txt --out $@
 
-../data/%.tsv: $T/%.tsv.gz
+../data/%.tsv: ../%.tsv.gz
 	zcat $+ | cut -f 2-3 > $@
 
-$T/train.tsv.gz: $(TARGETS_TRAIN)
+../train.tsv.gz: $(TARGETS_TRAIN)
 	zcat $(TARGETS_TRAIN) | gzip > $@
 
 $T/test.tsv.gz: $(TARGETS_TEST)
