@@ -124,7 +124,7 @@ def generate_message(message_list: list, focus_last_message=True):
     #     score = _score_response(result[0].to(device_r), total_input_reversed.to(device_r))
     #     results.append(result + (score,))
 
-    results = [_get_response(total_input[:, -1:], past) for i in num_samples]
+    results = [_get_response(total_input[:, -1:], past) for i in range(num_samples)]
 
     # results = [result + (score, ) for result, score in zip(results, scores)]
     results_with_scores = [result + (_score_response(result[0].to(device_r), total_input_reversed.to(device_r)), ) for result in results]
