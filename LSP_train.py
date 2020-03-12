@@ -386,6 +386,13 @@ while epoch < 5:
     if global_step >= args.num_optim_steps:
         break
     epoch += 1
+    torch.save(
+        {k: (v.cpu() if v is not None else None)  # save to cpu tensors
+            for k, v in model.state_dict().items()},
+        join(output_dir,
+                f'GP2-pretrain-step-{global_step}.pkl'))
+
+
 
 
 if args.local_rank == -1 or get_rank() == 0:

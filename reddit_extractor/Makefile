@@ -13,6 +13,10 @@ test: $T/test.tsv.gz
 
 #### Merged files:
 
+clean:
+	rm ../train.tsv.gz
+	rm ../data/train.tsv
+
 ../data/test.refs.txt: $T/test.tsv.gz
 	python src/create-multiref.py --data $< --testids data/test-multi-refs-ids.txt --out $@
 

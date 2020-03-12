@@ -23,7 +23,7 @@ def load_model(model, checkpoint, args, verbose=False):
             logger.info('no checkpoint provided for %s!' % model._get_name())
     else:
         if not os.path.exists(checkpoint):
-            raise ValueError('checkpoint %s not exist' % checkpoint)
+            raise ValueError('checkpoint %s does not exist' % checkpoint)
         if verbose:
             logger.info('loading finetuned model from %s' % checkpoint)
         model_state_dict = torch.load(checkpoint)

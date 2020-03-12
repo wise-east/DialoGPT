@@ -478,3 +478,6 @@ apex/*
 data/*
 reddit*
 *.out
+
+DialoGTP-MMI-decoder
+dialogpt_finetune.sh

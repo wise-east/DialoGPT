@@ -34,7 +34,7 @@ K=data/keys
 T=data/out
 
 # Dataset: (either 'full' or 'small')
-#SIZE=small
+#SIZE=full
 
 # List of block words: (currently empty as we can't 
 # release or blocklist, that's why use hashes above to
@@ -59,7 +59,7 @@ A=conv
 U=https://files.pushshift.io/reddit
 
 ifndef SIZE
-SIZE=small
+SIZE=full
 endif
 
 include configs/Makefile.targets.$(SIZE)
