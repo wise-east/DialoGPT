@@ -71,10 +71,10 @@ def _get_response(output_token, past):
         output_token[indices_to_remove] = -float('Inf')
         output_token = torch.multinomial(F.softmax(output_token, dim=-1), num_samples=1)
 
-        out = torch.cat((out, output_token), dim=1)
-
         if output_token.item() == end_token.item():
             break
+
+        out = torch.cat((out, output_token), dim=1)
 
     return out, past
 
@@ -103,8 +103,12 @@ def append_messages(old_list: list, new_list: list, truncate_length=128):
     total_length = 0
     for i, message in enumerate(reversed(old_list)):
         total_length += message.shape[1]
-        if total_length > truncate_length:
+
+        ## very important 
+        if total_length > truncate_length - 30:
             old_list[:] = old_list[-i:]
+            logger.info("Truncating list.")
+            print(old_list)
 
 
 def generate_message(message_list: list, focus_last_message=True):
@@ -114,30 +118,19 @@ def generate_message(message_list: list, focus_last_message=True):
     else:
         total_input_reversed = torch.cat(list(reversed(message_list)), dim=1)
 
+
     past = None
     if total_input.shape[1] > 1:
         _, past = model(total_input[:, :-1])
 
-    results = []
-    # for i in range(num_samples):
-    #     result = _get_response(total_input[:, -1:], past)
-    #     score = _score_response(result[0].to(device_r), total_input_reversed.to(device_r))
-    #     results.append(result + (score,))
+    logger.info(total_input.shape)
+    logger.info(total_input.tolist())
+    logger.info("current input: " + tokenizer.decode(total_input.tolist()[0]))
 
     results = [_get_response(total_input[:, -1:], past) for i in range(num_samples)]
+    # results = [_get_response(total_input[:, -1:], past) for i in range(num_samples)]
 
-    # results = [result + (score, ) for result, score in zip(results, scores)]
     results_with_scores = [result + (_score_response(result[0].to(device_r), total_input_reversed.to(device_r)), ) for result in results]
-
-
-    # scores = torch.stack([x[2] for x in results], dim=0)
-    # winner = torch.multinomial(F.softmax(scores / MMI_temperature, dim=0), num_samples=1).item()
-    # winner = torch.argmax(scores, dim=0)
-
-    # out = results[winner][0]
-
-    # return tokenizer.decode(out.tolist()[0], skip_special_tokens=True)
-
 
     return results_with_scores
 
