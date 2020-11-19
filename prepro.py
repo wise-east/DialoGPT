@@ -211,7 +211,7 @@ if __name__ == '__main__':
                         help='file name of training corpus (should be .tsv)')
     parser.add_argument('--chunk_size', type=int, default=65536,
                         help='num of data examples in a storing chunk')
-    parser.add_argument('--max_seq_len', type=int, default=128,
+    parser.add_argument('--max_seq_len', type=int, default=1024,
                         help='discard data longer than this')
     parser.add_argument('--reverse', action='store_true',
                         help='reverse the src tgt')

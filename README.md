@@ -1,7 +1,18 @@
-### Before following this README instructions, make sure the HPC cluster is set up with the right software
+### Before following this README instructions, make sure the discovery cluster is set up with the right software
+```
+module load gcc/8.3.0
+module load anaconda3
+conda activate LSP
+module load cuda/10.1.243
+module load cudnn/8.0.2-10.1
+```
+For basic interaction, run `python enron_interact.py`
+Finetuning commands can be found in `dialogpt_finetune.sh`
 
-For compiler: source /usr/usc/gnu/gcc/4.9.3/setup.sh
-For CUDA: source /usr/usc/cuda/10.0/setup.sh
+Any day that you want to finetune, you need to have it in a specific format: refer to files in `data` folder. 
+Then, run `python prepro.py --corpus <your file>`. This will create a db folder which you should provide as an argument for training. 
+Examples are shown in `dailogpt_finetune.sh`. 
+If at inference time some weight names don't match, look into which version of `transformers` you should use. `transformers==2.1.1` worked previously. 
 
 
 # A State-of-the-Art Large-scale Pretrained Response Generation Model (DialoGPT)
