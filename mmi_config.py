@@ -20,4 +20,4 @@ top_k = 20
 MMI_temperature = 0.7
 
 # other generation parameters 
-focus_last_message = True
+focus_last_message = False

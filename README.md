@@ -3,17 +3,42 @@
 module load gcc/8.3.0
 module load anaconda3
 conda activate LSP
-module load cuda/10.1.243
+module load cuda/10.1.243 (or other correct version that tensorflow asks for)
 module load cudnn/8.0.2-10.1
 ```
 For basic interaction, run `python enron_interact.py`
 Finetuning commands can be found in `dialogpt_finetune.sh`
 
 Any day that you want to finetune, you need to have it in a specific format: refer to files in `data` folder. 
-Then, run `python prepro.py --corpus <your file>`. This will create a db folder which you should provide as an argument for training. 
+Format: `1.0 <turn1> EOS 0.0 <turn2> EOS ... EOS <last turn -1> \t <last turn> `. 1.0 for turns you want to model. 0.0 for turns you don't want to model. 
+Then, run `python prepro.py --corpus <your file>`. This will create a db folder in `data/` which you should provide as an argument for training. 
 Examples are shown in `dailogpt_finetune.sh`. 
+
 If at inference time some weight names don't match, look into which version of `transformers` you should use. `transformers==2.1.1` worked previously. 
 
+Finetuning commands (Generated from finetune_cmd.py), also in `dialogpt_finetune.sh`: 
+
+For spolinbot: 
+> `python LSP_train.py --model_name_or_path /auto/nlg-05/hjcho/DialoGPT_mine/models/medium --init_checkpoint /auto/nlg-05/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/yesands_train.128len.db --eval_input_file ./data/yesands_valid.tsv --output_dir /auto/nlg-05/hjcho/DialoGPT_mine/models/output_model --seed 42 --max_seq_length 128 --train_batch_size 256 --gradient_accumulation_steps 8 --eval_batch_size 64 --learning_rate 1e-5 --num_optim_steps 10000 --valid_step 250 --warmup_steps 4000 --normalize_data true --fp16 true --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
+
+Commands for enron boss/subordinate bots: 
+> Boss: `python LSP_train.py --model_name_or_path /project/jonmay_231/hjcho/DialoGPT_mine/models/medium --init_checkpoint /project/jonmay_231/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/enron_boss_train.1024len.db --eval_input_file ./data/enron_boss_valid.tsv --output_dir /project/jonmay_231/hjcho/DialoGPT_mine/models/enron_boss --seed 42 --max_seq_length 1024 --train_batch_size 16 --gradient_accumulation_steps 8 --eval_batch_size 16 --learning_rate 1e-5 --num_optim_steps 5000 --valid_step 250 --warmup_steps 4000 --normalize_data true --fp16 false --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
+> Subordinate: `python LSP_train.py --model_name_or_path /project/jonmay_231/hjcho/DialoGPT_mine/models/medium --init_checkpoint /project/jonmay_231/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/enron_sub_train.1024len.db --eval_input_file ./data/enron_sub_valid.tsv --output_dir /project/jonmay_231/hjcho/DialoGPT_mine/models/enron_sub --seed 42 --max_seq_length 1024 --train_batch_size 16 --gradient_accumulation_steps 8 --eval_batch_size 16 --learning_rate 1e-5 --num_optim_steps 5000 --valid_step 250 --warmup_steps 4000 --normalize_data true --fp16 false --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
+
+
+If you don't see logs for the validation set in `eval_log.txt`, its because the parameter for `--valid_step` is larger than the number of steps that are taken in total for each epoch. 
+
+Files for enron: 
+- `enron_boss/sub_train/valid.tsv`
+- `boss/sub_prompts.txt`
+
+These files were generated from the notebook: `notebook/enron-exploration.ipynb` in `/Users/justincho/Downloads/ISI/projects/social-power`. You'll find a copy of these files in `data` of this directory. 
+
+Splitting of train/valid were done without shuffling. 
+
+
+
+# Original docs: 
 
 # A State-of-the-Art Large-scale Pretrained Response Generation Model (DialoGPT)
 

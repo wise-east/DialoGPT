@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, GPT2Config
 from mmi_config import device_f, device_r, num_samples, MMI_temperature, top_k, focus_last_message
 import time
+import csv 
+from tqdm import tqdm 
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -20,7 +22,6 @@ tokenizer = GPT2Tokenizer('models/medium/vocab.json', 'models/medium/merges.txt'
 
 weights_sub = torch.load('models/enron_sub/GPT2.1e-05.2.2gpu.2021-01-12213108/GP2-pretrain-step-339.pkl')
 weights_boss = torch.load('models/enron_boss/GPT2.1e-05.2.2gpu.2021-01-12210259/GP2-pretrain-step-338.pkl')
-# weights = torch.load('models/output_model/GPT2.1e-05.32.2gpu.2020-03-11162134/GP2-pretrain-step-615.pkl')
 weights_baseline = torch.load('models/medium/medium_ft.pkl')
 
 # distributed training will prepend weights with 'module.'
@@ -127,18 +128,16 @@ def append_messages(old_list: list, new_list: list, truncate_length=512):
     if len(old_list) == 0:
         old_list.append(end_token)
 
-    # truncating is faulty 
-    # fix this part for proper truncating 
-    total_length = 0
-    for i, message in enumerate(reversed(old_list)):
-        total_length += message.shape[1]
+    # # truncate
+    # total_length = 0
+    # for i, message in enumerate(reversed(old_list)):
+    #     total_length += message.shape[1]
 
-        ## very important: remove one by one from the back until length is less than truncate_length - 30 
-        # 30 is the buffer for the number of tokens to be generated 
-        if total_length > truncate_length - 30:
-            old_list[:] = old_list[-i:]
-            logger.info("Truncating list.")
-            print(old_list)
+    #     ## very important 
+    #     if total_length > truncate_length - 30:
+    #         old_list[:] = old_list[-i:]
+    #         logger.info("Truncating list.")
+    #         print(old_list)
 
 
 def generate_message(model, message_list: list, focus_last_message=True):
@@ -164,50 +163,84 @@ def generate_message(model, message_list: list, focus_last_message=True):
 
 
 if __name__ == '__main__':
-    my_message_list = []
-    while True:
-        my_message = input('usr >> ')
-        append_messages(my_message_list, [my_message])
-        # my_response = generate_message(my_message_list)
-        # print('bot >>', my_response)
-        # append_messages(my_message_list, [my_response])
-
-        start = time.time() 
-
-        results_baseline = generate_message(model_baseline, my_message_list, focus_last_message)
-        scores_baseline = F.softmax(torch.stack([x[2] for x in results_baseline], dim=0) / MMI_temperature, dim=0)
-        responses_baseline = [tokenizer.decode(r[0].tolist()[0], skip_special_tokens=True) for r in results_baseline]
-
-        print("Baseline reponses:\n")
-        for idx in range(len(results_baseline)): 
-            print(f"\n\t{idx}: Score - {round(scores_baseline[idx].item(), 2)} Response - {responses_baseline[idx]}")
 
 
-        results_boss = generate_message(model_boss, my_message_list, focus_last_message)
-        scores_boss = F.softmax(torch.stack([x[2] for x in results_boss], dim=0) / MMI_temperature, dim=0)
-        responses_boss = [tokenizer.decode(r[0].tolist()[0], skip_special_tokens=True) for r in results_boss]
+    # get a list of inputs 
+    # shuffle them. keep track of which is for boss, for subordinate, neutral
+    # generate responses for all of them a
+    # import into google sheets
 
-        print("Boss reponses:\n")
-        for idx in range(len(results_boss)): 
-            print(f"\n\t{idx + len(results_baseline)}: Score - {round(scores_boss[idx].item(), 2)} Response - {responses_boss[idx]}")
+    input_types = ["sub", "boss"] 
+    for input_type in input_types: 
+        with open(f"data/{input_type}_prompts.txt", "r") as f: 
+            input_message_list = f.readlines()
 
-        results_sub = generate_message(model_sub, my_message_list, focus_last_message)
-        scores_sub = F.softmax(torch.stack([x[2] for x in results_sub], dim=0) / MMI_temperature, dim=0)
-        responses_sub = [tokenizer.decode(r[0].tolist()[0], skip_special_tokens=True) for r in results_sub]
+        msg_list = [re.sub("\n", "", msg) for msg in input_message_list]
 
-        print("Subordinate reponses:\n")
-        for idx in range(len(results_sub)): 
-            print(f"\n\t{idx+ len(results_boss) + len(results_baseline)}: Score - {round(scores_sub[idx].item(), 2)} Response - {responses_sub[idx]}")
+        with open(f"data/responses_{input_type}_prompts.tsv", "w") as f: 
+            csv_writer = csv.writer(f, delimiter='\t')
+            for input_message in tqdm(input_message_list): 
+                
+                # input validation 
+                if isinstance(input_message, str): 
+                    if len(input_message.split()) > 512: 
+                        input_message = ' '.join(input_message.split()[-512:])
+                    input_message = [input_message]
+                elif isinstance(input_message, list) and isinstance(input_message[0], str): 
+                    if len(input_message[0].split()) > 512: 
+                        input_message[0] = ' '.join(input_message[0].split()[-512:]) 
+                else: 
+                    print(f"invalid instance type encountered: {input_message}, type: {type(input_message)}. Must be a string or a list containing a string")
+                    raise NotImplementedError
+                
+                # formality to use code from `enron_interact.py`
+                input_message_list = [] 
+                append_messages(input_message_list, input_message)
 
-        end = time.time() 
-        print(f"Time elapsed: {round(end - start, 2)}")
+                # generate results from baseline (vanilla DialoGPT)
+                start = time.time() 
+                results_baseline = generate_message(model_baseline, input_message_list, focus_last_message)
+                scores_baseline = F.softmax(torch.stack([x[2] for x in results_baseline], dim=0) / MMI_temperature, dim=0)
+                responses_baseline = [tokenizer.decode(r[0].tolist()[0], skip_special_tokens=True) for r in results_baseline]
 
-        choice = None 
-        while choice not in range(len(results_boss + results_sub + results_baseline)): 
-            try: 
-                choice = int(input("Choose the index of the bot response to use: "))
-            except Exception as e: 
-                print(f"Error: {e}\nInvalid choice. Choose an index that is listed above.")
-        responses = results_baseline + results_boss + results_sub 
-        append_messages(my_message_list, [responses[choice]])
+                highest_score_idx = torch.argmax(scores_baseline)
+                baseline_response = responses_baseline[highest_score_idx]
 
+                # print("Baseline reponses:\n")
+                # for idx in range(len(results_baseline)): 
+                #     print(f"\n\t{idx}: Score - {round(scores_baseline[idx].item(), 2)} Response - {responses_baseline[idx]}")
+
+                # print(highest_score_idx)
+                # print(baseline_response)
+                
+
+                # generate results from boss bot 
+                results_boss = generate_message(model_boss, input_message_list, focus_last_message)
+                scores_boss = F.softmax(torch.stack([x[2] for x in results_boss], dim=0) / MMI_temperature, dim=0)
+                responses_boss = [tokenizer.decode(r[0].tolist()[0], skip_special_tokens=True) for r in results_boss]
+
+                highest_score_idx = torch.argmax(scores_boss)
+                boss_response = responses_boss[highest_score_idx]
+
+                # print("Boss reponses:\n")
+                # for idx in range(len(results_boss)): 
+                #     print(f"\n\t{idx + len(results_baseline)}: Score - {round(scores_boss[idx].item(), 2)} Response - {responses_boss[idx]}")
+
+                # generate reuslts from subordinate bot 
+                results_sub = generate_message(model_sub, input_message_list, focus_last_message)
+                scores_sub = F.softmax(torch.stack([x[2] for x in results_sub], dim=0) / MMI_temperature, dim=0)
+                responses_sub = [tokenizer.decode(r[0].tolist()[0], skip_special_tokens=True) for r in results_sub]
+
+                highest_score_idx = torch.argmax(scores_sub)
+                sub_response = responses_sub[highest_score_idx]
+
+                # print("Subordinate reponses:\n")
+                # for idx in range(len(results_sub)): 
+                #     print(f"\n\t{idx+ len(results_boss) + len(results_baseline)}: Score - {round(scores_sub[idx].item(), 2)} Response - {responses_sub[idx]}")
+
+                end = time.time() 
+                # print(f"Time elapsed: {round(end - start, 2)}")
+
+                # save the best responses 
+
+                csv_writer.writerow([input_message[0], baseline_response, boss_response, sub_response])

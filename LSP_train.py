@@ -52,8 +52,8 @@ parser.add_argument("--max_seq_length", type=int, default=128)
 parser.add_argument("--skip_eval", action='store_true',
                     help='If true, skip evaluation.')
 parser.add_argument("--init_checkpoint", type=str)
-parser.add_argument("--train_input_file", type=str)
-parser.add_argument("--eval_input_file", type=str)
+parser.add_argument("--train_input_file", type=str, help="as db folder after running prepro.py")
+parser.add_argument("--eval_input_file", type=str, help="as tsv file")
 parser.add_argument("--continue_from", type=int, default=0)
 
 parser.add_argument("--train_batch_size", type=int, default=4,
@@ -270,7 +270,7 @@ logger.info("Start training!")
 
 
 
-while epoch < 5:
+while epoch < 10:
     logger.info(f"Epoch {epoch}")
     model.train()
     (tr_loss, tr_ppl, mean_ppl, nb_tr_examples, nb_tr_steps) = 0.0, 0.0, 0.0, 0, 0
@@ -278,7 +278,7 @@ while epoch < 5:
     train_start_time_epoch = time.time()
 
     for batch in train_dataloader:
-        logger.info("Inside training batch")
+        # logger.info("Inside training batch")
         # activate new training mode
         seq_len = batch[0].shape[1]
         batch = tuple(t.to(device) for t in batch)
@@ -350,33 +350,33 @@ while epoch < 5:
                     n_token_real_all_proc, n_token_total_all_proc, epoch_time),
                     file=train_logger)
 
-            if global_step % args.valid_step == 0:
-                if args.local_rank == -1 or get_rank() == 0:
-                    # only rank 0 process evaluate
-                    torch.save(
-                        {k: (v.cpu() if v is not None else None)  # save to cpu tensors
-                         for k, v in model.state_dict().items()},
-                        join(output_dir,
-                             f'GP2-pretrain-step-{global_step}.pkl'))
+            # if global_step % args.valid_step == 0:
+            #     if args.local_rank == -1 or get_rank() == 0:
+            #         # only rank 0 process evaluate
+            #         torch.save(
+            #             {k: (v.cpu() if v is not None else None)  # save to cpu tensors
+            #              for k, v in model.state_dict().items()},
+            #             join(output_dir,
+            #                  f'GP2-pretrain-step-{global_step}.pkl'))
 
-                    eval_loss, eval_ppl = eval_model_loss(
-                        model, enc, eval_dataloader_loss, epoch, args)
-                    # enable generation step evaluation for now
-                    # gen_response = eval_model_generation(
-                    #     model, enc, eval_dataloader_gen, epoch, args)
-                    '''
-                    # probably use beam search only for test set
-                    if False:
-                        gen_response_beam = eval_model_generation(
-                            model, enc, eval_dataloader_gen, epoch, args,
-                            use_beam_search=True, beam_width=3)
-                    '''
-                    print('{},{},{},{},{}'.format(
-                        epoch+1, global_step+1, step+1, eval_loss, eval_ppl),
-                        file=eval_logger)
-                    logger.info('current learning rate: '
-                                + str(optimizer.param_groups[0]['lr']))
-                    model.train()
+            #         eval_loss, eval_ppl = eval_model_loss(
+            #             model, enc, eval_dataloader_loss, epoch, args)
+            #         # enable generation step evaluation for now
+            #         # gen_response = eval_model_generation(
+            #         #     model, enc, eval_dataloader_gen, epoch, args)
+            #         '''
+            #         # probably use beam search only for test set
+            #         if False:
+            #             gen_response_beam = eval_model_generation(
+            #                 model, enc, eval_dataloader_gen, epoch, args,
+            #                 use_beam_search=True, beam_width=3)
+            #         '''
+            #         print('{},{},{},{},{}'.format(
+            #             epoch+1, global_step+1, step+1, eval_loss, eval_ppl),
+            #             file=eval_logger)
+            #         logger.info('current learning rate: '
+            #                     + str(optimizer.param_groups[0]['lr']))
+            #         model.train()
             if global_step >= args.num_optim_steps:
                 break
 
@@ -392,6 +392,25 @@ while epoch < 5:
         join(output_dir,
                 f'GP2-pretrain-step-{global_step}.pkl'))
 
+    # get validation results at the end of each epoch 
+    eval_loss, eval_ppl = eval_model_loss(
+        model, enc, eval_dataloader_loss, epoch, args)
+    # enable generation step evaluation for now
+    # gen_response = eval_model_generation(
+    #     model, enc, eval_dataloader_gen, epoch, args)
+    '''
+    # probably use beam search only for test set
+    if False:
+        gen_response_beam = eval_model_generation(
+            model, enc, eval_dataloader_gen, epoch, args,
+            use_beam_search=True, beam_width=3)
+    '''
+    print('{},{},{},{},{}'.format(
+        epoch+1, global_step+1, step+1, eval_loss, eval_ppl),
+        file=eval_logger)
+    logger.info('current learning rate: '
+                + str(optimizer.param_groups[0]['lr']))
+    model.train()
 
 
 

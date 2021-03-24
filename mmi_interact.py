@@ -3,6 +3,7 @@ import logging
 import re
 import torch.nn.functional as F
 from transformers import GPT2Tokenizer, GPT2LMHeadModel, GPT2Config
+from transformers.file_utils import WEIGHTS_NAME
 from mmi_config import device_f, device_r, num_samples, MMI_temperature, top_k, focus_last_message
 import time
 
@@ -16,8 +17,8 @@ logger.info("Load and properly initialize models...")
 torch.set_grad_enabled(False)
 
 tokenizer = GPT2Tokenizer('models/medium/vocab.json', 'models/medium/merges.txt')
-
-weights = torch.load('models/enron_sub/GPT2.1e-05.2.1gpu.2020-11-19025045/GP2-pretrain-step-210.pkl')
+weights = torch.load('models/alexa/GPT2.1e-05.2.2gpu.2021-03-09001702/GP2-pretrain-step-832.pkl')
+# weights = torch.load('models/enron_sub/GPT2.1e-05.2.1gpu.2020-11-19025045/GP2-pretrain-step-210.pkl')
 # weights = torch.load('models/enron_boss/GPT2.1e-05.2.1gpu.2020-11-19024508/GP2-pretrain-step-233.pkl')
 # weights = torch.load('models/output_model/GPT2.1e-05.32.2gpu.2020-03-11162134/GP2-pretrain-step-615.pkl')
 # weights = torch.load('models/medium/medium_ft.pkl')
@@ -31,14 +32,26 @@ keys = list(weights.keys())
 #         weights.pop(k, None)
 
 # print(keys)
+from collections import OrderedDict
+new_weights = OrderedDict()
 # fix misused key value
-weights["lm_head.weight"] = weights["lm_head.decoder.weight"]
-weights.pop("lm_head.decoder.weight", None)
+for k,v in weights.items():
+    if "lm_head.decoder.weight" in k: 
+        new_weights["lm_head.weight"] = v 
+    elif "module." in k: 
+        new_weights[re.sub("module.", "", k)] = v
+        # weights.pop(k)
+for k in new_weights.keys(): 
+    assert "module." not in k, k
 
+# if "lm_head.weight" not in weights: 
+#     weights["lm_head.weight"] = weights["lm_head.decoder.weight"]
+#     weights.pop("lm_head.decoder.weight", None)
+# print(weights.keys())
 
 cfg = GPT2Config.from_json_file('models/medium/config.json')
 model: GPT2LMHeadModel = GPT2LMHeadModel(cfg)
-model.load_state_dict(weights)
+model.load_state_dict(new_weights)
 if device_f == 'cuda':
     model.half()
 model.to(device_f)
@@ -49,8 +62,9 @@ logger.info("Loaded pretrained forward model")
 
 weights = torch.load('models/medium/medium_reverse.pkl')
 # fix misused key value
-weights["lm_head.weight"] = weights["lm_head.decoder.weight"]
-weights.pop("lm_head.decoder.weight", None)
+if "lm_head.decoder.weight" in weights: 
+    weights["lm_head.weight"] = weights["lm_head.decoder.weight"]
+    weights.pop("lm_head.decoder.weight", None)
 
 reverse_model: GPT2LMHeadModel = GPT2LMHeadModel(cfg)
 reverse_model.load_state_dict(weights)
