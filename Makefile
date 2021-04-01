@@ -1,0 +1,4 @@
+alexa_train: alexa_process_data
+	python LSP_train.py --model_name_or_path /project/jonmay_231/hjcho/DialoGPT_mine/models/medium --init_checkpoint /project/jonmay_231/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/alexa_training_set.1024len.db --eval_input_file ./data/alexa_valid_set.tsv --output_dir /project/jonmay_231/hjcho/DialoGPT_mine/models/alexa --seed 42 --max_seq_length 1024 --train_batch_size 16 --gradient_accumulation_steps 8 --eval_batch_size 16 --learning_rate 1e-5 --num_optim_steps 5000 --valid_step 50 --warmup_steps 4000 --normalize_data true --fp16 false --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true
+alexa_process_data: 
+	python prepro.py --corpus data/alexa_training_set.tsv

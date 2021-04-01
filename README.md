@@ -1,7 +1,9 @@
 ### Before following this README instructions, make sure the discovery cluster is set up with the right software
+Salloc command that's known to work: `salloc --gres=gpu:p100:2 --mem=32GB --partition=isi --time=16:00:00`
+
 ```
-module load gcc/8.3.0
-module load anaconda3
+<!-- module load gcc/8.3.0 -->
+<!-- module load anaconda3 -->
 conda activate LSP
 module load cuda/10.1.243 (or other correct version that tensorflow asks for)
 module load cudnn/8.0.2-10.1
@@ -12,7 +14,7 @@ Finetuning commands can be found in `dialogpt_finetune.sh`
 Any day that you want to finetune, you need to have it in a specific format: refer to files in `data` folder. 
 Format: `1.0 <turn1> EOS 0.0 <turn2> EOS ... EOS <last turn -1> \t <last turn> `. 1.0 for turns you want to model. 0.0 for turns you don't want to model. 
 Then, run `python prepro.py --corpus <your file>`. This will create a db folder in `data/` which you should provide as an argument for training. 
-Examples are shown in `dailogpt_finetune.sh`. 
+Examples are shown in `dialogpt_finetune.sh`. 
 
 If at inference time some weight names don't match, look into which version of `transformers` you should use. `transformers==2.1.1` worked previously. 
 

@@ -386,11 +386,18 @@ while epoch < 10:
     if global_step >= args.num_optim_steps:
         break
     epoch += 1
-    torch.save(
-        {k: (v.cpu() if v is not None else None)  # save to cpu tensors
-            for k, v in model.state_dict().items()},
-        join(output_dir,
-                f'GP2-pretrain-step-{global_step}.pkl'))
+    if isinstance(model, torch.nn.DataParallel): 
+        torch.save(
+            {k: (v.cpu() if v is not None else None)  # save to cpu tensors
+                for k, v in model.module.state_dict().items()},
+            join(output_dir,
+                    f'GP2-pretrain-step-{global_step}.pkl'))
+    else: 
+        torch.save(
+            {k: (v.cpu() if v is not None else None)  # save to cpu tensors
+                for k, v in model.state_dict().items()},
+            join(output_dir,
+                    f'GP2-pretrain-step-{global_step}.pkl'))
 
     # get validation results at the end of each epoch 
     eval_loss, eval_ppl = eval_model_loss(
