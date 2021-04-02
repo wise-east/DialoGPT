@@ -1,43 +1,66 @@
-### Before following this README instructions, make sure the discovery cluster is set up with the right software
-Salloc command that's known to work: `salloc --gres=gpu:p100:2 --mem=32GB --partition=isi --time=16:00:00`
+## Minimal README for fine-tuning DialoGPT
 
+#### Environment setup: 
+
+```
+git clone https://github.com/wise-east/DialoGPT.git
+cd DialoGPT
+conda env create -f LSP-linux.yml -n LSP
+conda activate LSP
+```
+
+#### Download model from original repo
+
+The original README is included below. 
+
+#### Make sure the discovery/endeavor cluster is set up with the right software
+
+`salloc` command to get GPU node that's known to work for fine-tuning DialoGPT: `salloc --gres=gpu:p100:2 --mem=32GB --partition=isi --time=16:00:00`
+
+Commands to run after `salloc` or to include in `sbatch`
 ```
 <!-- module load gcc/8.3.0 -->
 <!-- module load anaconda3 -->
 conda activate LSP
-module load cuda/10.1.243 (or other correct version that tensorflow asks for)
+module load cuda/10.1.243 (or other correct version that tensorflow asks for, you can look up what is available with module avail cuda)
 module load cudnn/8.0.2-10.1
 ```
-For basic interaction, run `python enron_interact.py`
-Finetuning commands can be found in `dialogpt_finetune.sh`
 
-Any day that you want to finetune, you need to have it in a specific format: refer to files in `data` folder. 
+Any data that you want to finetune with, you need to have it in a specific format.
 Format: `1.0 <turn1> EOS 0.0 <turn2> EOS ... EOS <last turn -1> \t <last turn> `. 1.0 for turns you want to model. 0.0 for turns you don't want to model. 
-Then, run `python prepro.py --corpus <your file>`. This will create a db folder in `data/` which you should provide as an argument for training. 
-Examples are shown in `dialogpt_finetune.sh`. 
+For example, this is one line from a training set `alexa_train_set.tsv` for the Alexa Prize challenge: 
+> 0.0 let's chat EOS 1.0 Hi, this is an Alexa Prize Socialbot. I believe we haven't talked before. I'm excited to get to know you better! Could you tell me your name? EOS 0.0 jackson EOS 1.0 Nice to meet you jackson! How has your day been so far? EOS 0.0 good EOS 1.0 Great. I'm sure you'll have a great time. EOS 0.0 okay EOS 1.0 I'm glad to hear you're having a good day! Let's keep the good vibes going. I can talk about movies, news, or anything else that interests you. What would you like to talk about? EOS 0.0 movies EOS 1.0 Absolutely, let's talk about that! I love watching movies; I get to learn so much about what the world is like outside of the cloud! Have you seen any movies recently? EOS 0.0 yes EOS 1.0 Awesome! I love watching movies too. I recently watched the movie Crazy Rich Asians which is a comedy film directed by Michael Bay. What do you think about that? EOS 0.0 i haven't watched it EOS 1.0 I really like the movie the Darjeeling Limited, and its beautiful images of India's landscape. Do you enjoy traveling? EOS 0.0 yes EOS 1.0 That's great to hear! I'm excited to learn more about the Darjeeling Limited! What do you think is the most interesting aspect of the Darjeeling Limited? EOS 0.0 i don't know EOS 1.0 That's okay. What's your favorite part about the Darjeeling Limited? EOS 0.0 i haven't seen it EOS 1.0 That's cool. What makes you like the Darjeeling Limited? EOS 0.0 i don't know because it's cool EOS 1.0 That's very kind of you to say. I like the Darjeeling Limited because it's fun and you're going to watch it someday. EOS 0.0 okay EOS 1.0 You mentioned the Darjeeling Limited. What parts of the Darjeeling Limited do you find interesting? \t 0.0 alexa stop
 
-If at inference time some weight names don't match, look into which version of `transformers` you should use. `transformers==2.1.1` worked previously. 
 
-Finetuning commands (Generated from finetune_cmd.py), also in `dialogpt_finetune.sh`: 
+Then, run `python prepro.py --corpus <your file> --max_seq_len <default=1024>`. This will create a db folder in `data/` as `<your file>.<seq length>len.db` which you should provide as an argument for training. Running this command for the validation set is not needed. 
+
+If at inference time some weight names don't match, look into which version of `transformers` you use. `transformers==2.1.1` worked previously, which is already included in `LSP-generic.yml`. 
+
+Example finetuning commands (Generated from finetune_cmd.py), also in `dialogpt_finetune.sh`. Make sure to go through each argument carefully. 
 
 For spolinbot: 
-> `python LSP_train.py --model_name_or_path /auto/nlg-05/hjcho/DialoGPT_mine/models/medium --init_checkpoint /auto/nlg-05/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/yesands_train.128len.db --eval_input_file ./data/yesands_valid.tsv --output_dir /auto/nlg-05/hjcho/DialoGPT_mine/models/output_model --seed 42 --max_seq_length 128 --train_batch_size 256 --gradient_accumulation_steps 8 --eval_batch_size 64 --learning_rate 1e-5 --num_optim_steps 10000 --valid_step 250 --warmup_steps 4000 --normalize_data true --fp16 true --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
+> `python LSP_train.py --model_name_or_path /project/jonmay_231/hjcho/DialoGPT_mine/models/medium --init_checkpoint /project/jonmay_231/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/yesands_train.128len.db --eval_input_file ./data/yesands_valid.tsv --output_dir /project/jonmay_231/hjcho/DialoGPT_mine/models/spolin --seed 42 --max_seq_length 128 --train_batch_size 256 --gradient_accumulation_steps 8 --eval_batch_size 64 --learning_rate 1e-5 --num_optim_steps 10000 --valid_step 250 --warmup_steps 4000 --normalize_data true --fp16 true --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
 
 Commands for enron boss/subordinate bots: 
 > Boss: `python LSP_train.py --model_name_or_path /project/jonmay_231/hjcho/DialoGPT_mine/models/medium --init_checkpoint /project/jonmay_231/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/enron_boss_train.1024len.db --eval_input_file ./data/enron_boss_valid.tsv --output_dir /project/jonmay_231/hjcho/DialoGPT_mine/models/enron_boss --seed 42 --max_seq_length 1024 --train_batch_size 16 --gradient_accumulation_steps 8 --eval_batch_size 16 --learning_rate 1e-5 --num_optim_steps 5000 --valid_step 250 --warmup_steps 4000 --normalize_data true --fp16 false --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
 > Subordinate: `python LSP_train.py --model_name_or_path /project/jonmay_231/hjcho/DialoGPT_mine/models/medium --init_checkpoint /project/jonmay_231/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/enron_sub_train.1024len.db --eval_input_file ./data/enron_sub_valid.tsv --output_dir /project/jonmay_231/hjcho/DialoGPT_mine/models/enron_sub --seed 42 --max_seq_length 1024 --train_batch_size 16 --gradient_accumulation_steps 8 --eval_batch_size 16 --learning_rate 1e-5 --num_optim_steps 5000 --valid_step 250 --warmup_steps 4000 --normalize_data true --fp16 false --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
 
+Commands for alexa training
+> `python LSP_train.py --model_name_or_path /project/jonmay_231/hjcho/DialoGPT_mine/models/medium --init_checkpoint /project/jonmay_231/hjcho/DialoGPT_mine/models/medium/medium_ft.pkl --train_input_file ./data/alexa_training_set.1024len.db --eval_input_file ./data/alexa_valid_set.tsv --output_dir /project/jonmay_231/hjcho/DialoGPT_mine/models/alexa --seed 42 --max_seq_length 1024 --train_batch_size 16 --gradient_accumulation_steps 8 --eval_batch_size 16 --learning_rate 1e-5 --num_optim_steps 5000 --valid_step 50 --warmup_steps 4000 --normalize_data true --fp16 false --lr_schedule noam --loss_scale 0.0 --no_token_id true --pbar true`
 
-If you don't see logs for the validation set in `eval_log.txt`, its because the parameter for `--valid_step` is larger than the number of steps that are taken in total for each epoch. 
+If you don't see logs for the validation set in `eval_log.txt` in a subdirectory of the path you supplied as `output_dir`, its because the parameter for `--valid_step` is larger than the number of steps that are taken in total for each epoch. You will need to reduce the `--valid-step` or increase the total `--num_optim_steps`. 
+
+After training, choose which checkpoint you want to use for inference. I look at `eval_log.txt` and pick the training step that has the lowest perplexity for  for basic interaction, run `python mmi_interact.py` after changing the model paths inside the script. 
+
+Make sure you have the pretrained weights of DialoGPT and the reverse model's weights as well in the `models` folder before interacting. All the model weights can be downloaded from links in the original README, which are shown below. Refer to `/project/jonmay_231/hjcho/DialoGPT_mine/models/` in Justin's project folder (if you have access to the discovery or endeavor cluster). You can just `cp` necessary files from there if you do.  
 
 Files for enron: 
 - `enron_boss/sub_train/valid.tsv`
 - `boss/sub_prompts.txt`
 
-These files were generated from the notebook: `notebook/enron-exploration.ipynb` in `/Users/justincho/Downloads/ISI/projects/social-power`. You'll find a copy of these files in `data` of this directory. 
+The training files for Enron were generated from the notebook: `notebook/enron-exploration.ipynb` in `/Users/justincho/Downloads/ISI/projects/social-power`. You'll find a copy of these files in `data` of this directory. 
 
 Splitting of train/valid were done without shuffling. 
-
 
 
 # Original docs: 
