@@ -34,7 +34,7 @@ For example, this is one line from a training set `alexa_train_set.tsv` for the 
 
 Then, run `python prepro.py --corpus <your file> --max_seq_len <default=1024>`. This will create a db folder in `data/` as `<your file>.<seq length>len.db` which you should provide as an argument for training. Running this command for the validation set is not needed. 
 
-If at inference time some weight names don't match, look into which version of `transformers` you use. `transformers==2.1.1` worked previously, which is already included in `LSP-generic.yml`. 
+If at inference time some weight names don't match, look into which version of `transformers` you use. `transformers==2.1.1` worked previously, which is already included in `LSP-linux.yml`. 
 
 Example finetuning commands (Generated from finetune_cmd.py), also in `dialogpt_finetune.sh`. Make sure to go through each argument carefully. 
 
